@@ -23,9 +23,10 @@ export default class ClipController {
   @summary("List all clips")
   @tag
   @query({
-    broadcast_id: { type: "string", required: false },
-    game_id: { type: "string", required: false },
-    take: { type: "numbre", required: false },
+    //broadcast_id: { type: "string", required: false },
+    //game_id: { type: "string", required: false },
+    //take: { type: "numbre", required: false },
+    download_status: { type: "string", required: false },
   })
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
   @responses({
@@ -40,22 +41,46 @@ export default class ClipController {
   })
   async listClips(ctx: any) {
     const clips = await clipCore.listClips(
-      ctx.query.broadcast_id,
-      ctx.query.game_id,
-      ctx.query.take
+      //ctx.query.broadcast_id,
+      //ctx.query.game_id,
+      //ctx.query.take
+      ctx.query.download_status
     );
     ctx.response.status = 200;
     ctx.response.body = clips;
   }
 
-  // List
-  @request("post", "testdownload")
-  @summary("Test Download")
+  @request("post", "/create_for_day")
+  @summary("Create clips for the day")
   @tag
   @query({
     broadcast_id: { type: "string", required: false },
     game_id: { type: "string", required: false },
+    take: { type: "number", required: false },
   })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Created clips",
+      schema: {
+        type: "array",
+        properties: (Clip as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async createForDay(ctx: any) {
+    await clipCore.createClipsForTheDay(
+      ctx.query.broadcast_id,
+      ctx.query.game_id,
+      ctx.query.take
+    );
+    ctx.response.status = 200;
+  }
+
+  @request("post", "/trigger_download")
+  @summary("Trigger downloads on all waiting clips")
+  @tag
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
   @responses({
     200: {
@@ -67,13 +92,46 @@ export default class ClipController {
     },
     400: { description: "error" },
   })
-  async testDownload(ctx: any) {
-    const clips = await clipCore.testDownload(
-      ctx.query.broadcast_id,
-      ctx.query.game_id
-    );
+  async triggerDownload(ctx: any) {
+    const clips = await clipCore.triggerDownload();
     ctx.response.status = 200;
     ctx.response.body = clips;
+  }
+
+  @request("post", "/process")
+  @summary("Process all downloaded clips")
+  @tag
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "All clips",
+      schema: {
+        type: "array",
+        properties: (Clip as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async processClips(ctx: any) {
+    const clips = await clipCore.processDownloads();
+    ctx.response.status = 200;
+    ctx.response.body = clips;
+  }
+
+  // Delete
+  @request("delete", "")
+  @summary("Deletes all clips")
+  @tag
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Deleted All clips",
+    },
+    400: { description: "error" },
+  })
+  async removeAll(ctx: any) {
+    await clipCore.deleteAll();
+    ctx.response.status = 200;
   }
 }
 
