@@ -11,7 +11,7 @@ import {
 } from "koa-swagger-decorator-trolloks";
 import authMiddleware from "../../server/auth-middleware";
 import { Role } from "../auth/auth-types";
-import { Game } from "./game-models";
+import { Game, GameDTO } from "./game-models";
 import * as gameCore from "./game-core";
 
 const tag = tags(["Games"]);
@@ -43,7 +43,7 @@ export default class GameController {
   @request("post", "")
   @summary("Create new game")
   @tag
-  @body({ type: "object", properties: (Game as any).swaggerDocument })
+  @body({ type: "object", properties: (GameDTO as any).swaggerDocument })
   @responses({
     200: {
       description: "Game Created Successfully",
@@ -51,7 +51,7 @@ export default class GameController {
     400: { description: "error" },
   })
   async createGame(ctx: any) {
-    await gameCore.createGame(ctx.request.body as Game);
+    await gameCore.createGame(ctx.request.body as GameDTO);
     ctx.response.status = 200;
   }
 

@@ -7,22 +7,19 @@ function toGame(game: IGame): Game {
     name: game.name,
     twitch_id: game.twitch_id,
   };
-
-  console.log(game);
   return actualUser;
 }
 
 export async function upsertGame(game: Game): Promise<Game | null> {
-  console.log(game);
-  const upsertedGame = await GameModel.findOneAndUpdate(
-    { name: game.name },
+  const upsertGame = await GameModel.findOneAndUpdate(
+    { twitch_id: game.twitch_id },
     {
-      name: game.name,
-      twitch_id: game.twitch_id,
+      ...game,
     },
     { upsert: true, new: true }
   );
-  return toGame(upsertedGame);
+
+  return toGame(upsertGame);
 }
 
 export async function getGameById(id: string): Promise<Game | null> {

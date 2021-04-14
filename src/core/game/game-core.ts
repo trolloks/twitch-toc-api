@@ -1,5 +1,6 @@
-import { Game } from "./game-models";
+import { Game, GameDTO } from "./game-models";
 import * as gameRepo from "../../repo/game";
+import { getGameId } from "../../gateway/twitch-gateway";
 
 const { NODE_SECRET } = process.env;
 
@@ -11,7 +12,13 @@ export async function listGames(): Promise<Game[]> {
   return [];
 }
 
-export async function createGame(game: Game): Promise<void> {
+export async function createGame(gameDTO: GameDTO): Promise<void> {
+  const game: Game = { ...gameDTO };
+  const id = await getGameId(game.name);
+  if (!id) {
+    return;
+  }
+  game.twitch_id = id;
   await gameRepo.upsertGame(game);
 }
 
