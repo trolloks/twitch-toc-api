@@ -4,6 +4,7 @@ import { swaggerClass, swaggerProperty } from "koa-swagger-decorator-trolloks";
 export class Clip {
   id?: string;
   twitch_id: string;
+  game_id?: string;
   title: string;
   url: string;
   thumbnail_url: string;

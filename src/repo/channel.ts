@@ -6,6 +6,7 @@ function toChannel(channel: IChannel): Channel {
     id: channel._id,
     name: channel.name,
     twitch_id: channel.twitch_id,
+    game_id: channel.game_id,
   };
   return actualUser;
 }
@@ -27,9 +28,20 @@ export async function getChannelById(id: string): Promise<Channel | null> {
   return existingChannel && toChannel(existingChannel);
 }
 
+export async function getChannelByTwitchId(
+  twitch_id: string
+): Promise<Channel | null> {
+  const existingChannel = await ChannelModel.findOne({ twitch_id });
+  return existingChannel && toChannel(existingChannel);
+}
+
 export async function listChannels(): Promise<Channel[]> {
   const existingChannels = await ChannelModel.find();
   return existingChannels.map((existingChannel) => toChannel(existingChannel));
+}
+
+export async function removeOne(twitch_id: string): Promise<void> {
+  await ChannelModel.deleteOne({ twitch_id });
 }
 
 export async function removeAll(): Promise<void> {

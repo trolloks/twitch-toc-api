@@ -3,6 +3,7 @@ import { wrapper, Document } from "../utils/mongoose-helpers";
 
 export interface IClip extends Document {
   twitch_id: string;
+  game_id?: string;
   title: string;
   url: string;
   thumbnail_url: string;
@@ -15,6 +16,7 @@ export interface IClip extends Document {
 
 const ClipSchema: SchemaDefinition = {
   twitch_id: { type: String },
+  game_id: { default: undefined, type: String },
   title: { type: String },
   url: { type: String },
   thumbnail_url: { type: String },

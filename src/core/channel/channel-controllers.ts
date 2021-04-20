@@ -8,6 +8,7 @@ import {
   middlewares,
   query,
   body,
+  path,
 } from "koa-swagger-decorator-trolloks";
 import authMiddleware from "../../server/auth-middleware";
 import { Role } from "../auth/auth-types";
@@ -35,6 +36,34 @@ export default class ChannelController {
   })
   async listChannels(ctx: any) {
     const channels = await channelCore.listChannels();
+    ctx.response.status = 200;
+    ctx.response.body = channels;
+  }
+
+  // List
+  @request("get", "/fetch")
+  @summary("Fetch channel from twitch")
+  @tag
+  @query({
+    name: { type: "string", required: true },
+    game_id: { type: "string", required: false },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "All channels",
+      schema: {
+        type: "array",
+        properties: (Channel as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async fetchChannel(ctx: any) {
+    const channels = await channelCore.fetchChannels(
+      ctx.query.name,
+      ctx.query.game_id
+    );
     ctx.response.status = 200;
     ctx.response.body = channels;
   }
@@ -68,6 +97,25 @@ export default class ChannelController {
   })
   async removeAll(ctx: any) {
     await channelCore.deleteAll();
+    ctx.response.status = 200;
+  }
+
+  // Delete
+  @request("delete", "/{twitch_id}")
+  @summary("Deletes all channels")
+  @tag
+  @path({
+    twitch_id: { type: "string", required: true },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Deleted All channels",
+    },
+    400: { description: "error" },
+  })
+  async removeOne(ctx: any) {
+    await channelCore.deleteOne(ctx.params.twitch_id);
     ctx.response.status = 200;
   }
 }

@@ -7,6 +7,7 @@ function toClip(clip: IClip): Clip {
     download_status: clip.download_status,
     title: clip.title,
     twitch_id: clip.twitch_id,
+    game_id: clip.game_id,
     broadcaster_id: clip.broadcaster_id,
     broadcaster_name: clip.broadcaster_name,
     view_count: clip.view_count,

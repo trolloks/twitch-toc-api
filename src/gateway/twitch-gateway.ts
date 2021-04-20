@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import cheerio from "cheerio";
 import puppeteer from "puppeteer";
 import { TWITCH_CLIENT, TWITCH_SECRET } from "../env.json";
+import { Channel } from "src/core/channel/channel-models";
 
 export const twitch_api = axios.create({
   baseURL: "https://api.twitch.tv/helix",
@@ -47,41 +48,60 @@ export async function getGameId(name: string): Promise<string | undefined> {
   return undefined;
 }
 
-export async function getBroadcasterId(
-  name: string
-): Promise<string | undefined> {
+export async function getBroadcaster(
+  broadcaster_id: string
+): Promise<Channel | undefined> {
   await setAuthentication();
-  const response = await twitch_api.get(`search/channels?query=${name}`);
+  const url = `channels?broadcaster_id=${broadcaster_id}`;
+  console.log(`Trying to get channel with ${url}`);
+  const response = await twitch_api.get(url);
   const { data } = response.data;
-
-  if (data?.length) {
-    const [twitchUser] = data;
-    if (twitchUser) {
-      return twitchUser.id;
-    }
+  if (data && data.length > 0) {
+    const [broadcaster] = data;
+    return {
+      name: broadcaster.broadcaster_name,
+      game_id: broadcaster.game_id,
+      twitch_id: broadcaster.broadcaster_id,
+    } as Channel;
   }
   return undefined;
+}
+
+export async function getBroadcasters(
+  name: string,
+  game_id?: string
+): Promise<any[] | undefined> {
+  await setAuthentication();
+  const url = `search/channels?query=${name}${game_id ? ` ${game_id}` : ""}`;
+  console.log(`Trying to get channel with ${url}`);
+  const response = await twitch_api.get(url);
+  const { data } = response.data;
+  return data;
 }
 
 export async function getClips(
   broadcaster_id: string,
   game_id: string,
-  take: number
+  take: number,
+  date?: Date
 ): Promise<any[]> {
   await setAuthentication();
   let query = `game_id=${game_id}`;
   if (broadcaster_id) {
     query = `broadcaster_id=${broadcaster_id}`;
   }
-  const url = `clips?${query}&first=${take}&started_at=${format(
-    new Date(),
-    "yyyy-MM-dd"
-  )}T00:00:00Z`;
+  const url = `clips?${query}&first=${take}${
+    date ? `&started_at=${format(date, "yyyy-MM-dd")}T00:00:00Z` : ""
+  }`;
   console.log(`Trying to get clips with ${url}`);
   const response = await twitch_api.get(url);
   const { data } = response.data;
   if (data) {
-    return data.filter((i: any) => i.language === "en");
+    return data.filter(
+      (i: any) =>
+        (!i.language || i.language.startsWith("en")) &&
+        (!game_id || i.game_id === game_id)
+    );
   }
   return [];
 }

@@ -50,12 +50,41 @@ export default class ClipController {
     ctx.response.body = clips;
   }
 
-  @request("post", "/create_for_day")
-  @summary("Create clips for the day")
+  @request("post", "/status")
+  @summary("Change clip status")
+  @tag
+  @query({
+    fromState: { type: "string", required: true },
+    toState: { type: "string", required: true },
+    clip_id: { type: "string", required: false },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Reject clip",
+      schema: {
+        type: "array",
+        properties: (Clip as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async reject(ctx: any) {
+    await clipCore.setState(
+      ctx.query.fromAtate,
+      ctx.query.toState,
+      ctx.query.clip_id
+    );
+    ctx.response.status = 200;
+  }
+
+  @request("post", "/fetch")
+  @summary("Fetch clips")
   @tag
   @query({
     broadcast_id: { type: "string", required: false },
     game_id: { type: "string", required: false },
+    start_date: { type: "string", required: false },
     take: { type: "number", required: false },
   })
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
@@ -73,6 +102,7 @@ export default class ClipController {
     await clipCore.createClipsForTheDay(
       ctx.query.broadcast_id,
       ctx.query.game_id,
+      ctx.query.start_date,
       ctx.query.take
     );
     ctx.response.status = 200;

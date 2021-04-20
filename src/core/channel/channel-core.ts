@@ -1,6 +1,6 @@
 import { Channel, ChannelDTO } from "./channel-models";
 import * as channelRepo from "../../repo/channel";
-import { getBroadcasterId } from "../../gateway/twitch-gateway";
+import { getBroadcasters, getBroadcaster } from "../../gateway/twitch-gateway";
 
 const { NODE_SECRET } = process.env;
 
@@ -12,14 +12,35 @@ export async function listChannels(): Promise<Channel[]> {
   return [];
 }
 
+export async function fetchChannels(
+  name: string,
+  game_id?: string
+): Promise<any[]> {
+  const ids = await getBroadcasters(name, game_id);
+  if (ids) {
+    return ids;
+  }
+  return [];
+}
+
+export async function getChannelByTwitchId(
+  twitch_id: string
+): Promise<Channel | null> {
+  const channel = await channelRepo.getChannelByTwitchId(twitch_id);
+  return channel;
+}
+
 export async function createChannel(channelDTO: ChannelDTO): Promise<void> {
-  const channel: Channel = { ...channelDTO };
-  const id = await getBroadcasterId(channel.name);
-  if (!id) {
+  const channel = await getBroadcaster(channelDTO.broadcaster_id);
+  if (!channel) {
     return;
   }
-  channel.twitch_id = id;
+  console.log(channel);
   await channelRepo.upsertChannel(channel);
+}
+
+export async function deleteOne(twitch_id: string): Promise<void> {
+  await channelRepo.removeOne(twitch_id);
 }
 
 export async function deleteAll(): Promise<void> {
