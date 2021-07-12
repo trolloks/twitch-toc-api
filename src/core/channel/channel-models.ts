@@ -12,4 +12,6 @@ export class Channel {
 export class ChannelDTO {
   @swaggerProperty({ type: "string", required: false })
   broadcaster_id: string;
+  @swaggerProperty({ type: "string", required: false })
+  game_id?: string;
 }

@@ -4,8 +4,8 @@ import { getBroadcasters, getBroadcaster } from "../../gateway/twitch-gateway";
 
 const { NODE_SECRET } = process.env;
 
-export async function listChannels(): Promise<Channel[]> {
-  const dataUsers = await channelRepo.listChannels();
+export async function listChannels(game_id: string): Promise<Channel[]> {
+  const dataUsers = await channelRepo.listChannels(game_id);
   if (dataUsers) {
     return dataUsers;
   }
@@ -36,6 +36,9 @@ export async function createChannel(channelDTO: ChannelDTO): Promise<void> {
     return;
   }
   console.log(channel);
+  if (channelDTO.game_id){
+    channel.game_id = channelDTO.game_id;
+  }
   await channelRepo.upsertChannel(channel);
 }
 

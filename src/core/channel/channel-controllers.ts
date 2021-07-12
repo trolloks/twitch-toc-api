@@ -23,6 +23,9 @@ export default class ChannelController {
   @request("get", "")
   @summary("List all channels")
   @tag
+  @query({
+    game_id: { type: "string", required: false },
+  })
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
   @responses({
     200: {
@@ -35,7 +38,7 @@ export default class ChannelController {
     400: { description: "error" },
   })
   async listChannels(ctx: any) {
-    const channels = await channelCore.listChannels();
+    const channels = await channelCore.listChannels(ctx.query.game_id);
     ctx.response.status = 200;
     ctx.response.body = channels;
   }

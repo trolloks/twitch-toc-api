@@ -5,6 +5,12 @@ import puppeteer from "puppeteer";
 import { TWITCH_CLIENT, TWITCH_SECRET } from "../env.json";
 import { Channel } from "src/core/channel/channel-models";
 
+function sleep(time: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, time || 1000);
+  });
+}
+
 export const twitch_api = axios.create({
   baseURL: "https://api.twitch.tv/helix",
   headers: {
@@ -114,15 +120,16 @@ export async function scrapeDownloadUrl(
     const browser = await puppeteer.launch({ args: ["--no-sandbox"] });
     const page = await browser.newPage();
     console.log("Created new headless page");
-    const waitForSelector = page.waitForSelector("video");
-    await page.goto(url, {
-      waitUntil: "networkidle2",
-      timeout: 30000,
-    });
-    await waitForSelector;
-    await page.waitForFunction(
-      'document.getElementsByTagName("video")[0].src != ""'
+    const watchdog1 = page.waitForSelector("video");
+    const watchdog = page.waitForFunction(
+      () =>
+        document.getElementsByTagName("video").length > 0 &&
+        (document.getElementsByTagName("video")[0] as any).src,
+      { timeout: 30000 }
     );
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await watchdog1;
+    await watchdog;
     const html = await page.content();
     console.log("Loaded Html");
     const $ = cheerio.load(html);

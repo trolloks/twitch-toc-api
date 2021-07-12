@@ -86,10 +86,14 @@ export async function createClipsForTheDay(
   start_date?: string,
   take?: number
 ): Promise<void> {
+  let start_date_Date: undefined | Date = undefined;
+  if (start_date) {
+    start_date_Date = new Date(Date.parse(start_date));
+  }
+
   let broadcasters: Channel[] = [];
   if (!broadcast_id && game_id) {
-    const tempBroadcasters = await channelCore.listChannels();
-    broadcasters = tempBroadcasters.filter((i) => i.game_id === game_id);
+    broadcasters = await channelCore.listChannels(game_id);
   } else if (broadcast_id && game_id) {
     const broadcaster = await channelCore.getChannelByTwitchId(broadcast_id);
     if (broadcaster) {
@@ -101,11 +105,15 @@ export async function createClipsForTheDay(
 
   // Add all broadcasters
   for (let i = 0; i < broadcasters.length; i++) {
+    console.log(`Processing clips for ${broadcasters[i].name}...`);
     const twitchClips = await getClips(
       broadcasters[i].twitch_id || "",
       game_id,
       take || 20,
-      (start_date && new Date(Date.parse(start_date))) || new Date()
+      start_date_Date
+    );
+    console.log(
+      `Got ${twitchClips.length} clips back from ${broadcasters[i].name}.`
     );
     for (let i = 0; i < twitchClips.length; i++) {
       const twitchClip = twitchClips[i];
@@ -127,6 +135,8 @@ export async function createClipsForTheDay(
         download_status: "WAITING",
       } as Clip);
     }
+    // dont nuke the api
+    await sleep(200);
   }
 
   if (!broadcast_id && game_id) {
@@ -135,9 +145,10 @@ export async function createClipsForTheDay(
       "",
       game_id,
       take || 20,
-      (start_date && new Date(Date.parse(start_date))) || new Date()
+      start_date_Date
     );
 
+    console.log(`Got ${twitchClips.length} clips back from twitch.`);
     for (let i = 0; i < twitchClips.length; i++) {
       const twitchClip = twitchClips[i];
       const existingClip = await clipRepo.getClipByTwitchId(twitchClip.id);
@@ -219,7 +230,7 @@ export async function processDownloads(): Promise<void> {
     const { twitch_id, broadcaster_name } = clips[i];
     const path = Path.resolve(pathDir, `${twitch_id}.mp4`);
     await ffmpegUtil(
-      `-y -i ${path} -ignore_loop 0 -i ${GIF_LOGO_PATH} -i ${BANNER_PATH} -filter_complex [2][0]scale2ref=w='iw':h='ow*6/100'[wm][vid];[1][vid]scale2ref=w='iw*10/100':h='ow'[wm2][vid];[vid][wm2]overlay=W-w:10:shortest=1[vid2];[vid2][wm]overlay=0:H-h,drawtext=text='${broadcaster_name}':x=18:y=H-th-18:fontfile='${FONT_PATH}':fontsize=64:fontcolor=white -q 0 ${Path.resolve(
+      `-y -i ${path} -ignore_loop 0 -i ${GIF_LOGO_PATH} -i ${BANNER_PATH} -filter_complex [2][0]scale2ref=w='iw':h='ow*6/100'[wm][vid];[1][vid]scale2ref=w='iw*10/100':h='ow'[wm2][vid];[vid][wm2]overlay=W-w:10:shortest=1[vid2];[vid2][wm]overlay=0:H-h,drawtext=text='${broadcaster_name}':x=18:y=H-th-18:fontfile='${FONT_PATH}':fontsize=64:fontcolor=white -acodec mp3 -q 0 ${Path.resolve(
         outputPathDir,
         `${twitch_id}.mts`
       )}`
@@ -249,13 +260,13 @@ export async function processDownloads(): Promise<void> {
       `-y -f concat -i ${Path.resolve(
         outputPathDir,
         listFileName
-      )} -c copy ${Path.resolve(outputPathDir, `concat.mts`)}`
+      )} -c copy -acodec mp3 ${Path.resolve(outputPathDir, `concat.mts`)}`
     );
     console.log(`Created concatted mts successfully!`);
     await sleep(1000);
     console.log(`Started final processing...`);
     await ffmpegUtil(
-      `-y -i ${Path.resolve(outputPathDir, `concat.mts`)} -q 0 ${Path.resolve(
+      `-y -i ${Path.resolve(outputPathDir, `concat.mts`)} -acodec mp3 -q 0 ${Path.resolve(
         outputPathDir,
         `${format(new Date(), "yyyyMMddhhmmss")}.mp4`
       )}`

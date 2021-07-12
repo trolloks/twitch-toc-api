@@ -35,8 +35,10 @@ export async function getChannelByTwitchId(
   return existingChannel && toChannel(existingChannel);
 }
 
-export async function listChannels(): Promise<Channel[]> {
-  const existingChannels = await ChannelModel.find();
+export async function listChannels(game_id: string): Promise<Channel[]> {
+  const existingChannels = await ChannelModel.find(
+    (game_id && { game_id }) || {}
+  );
   return existingChannels.map((existingChannel) => toChannel(existingChannel));
 }
 
