@@ -27,6 +27,13 @@ export async function getGameById(id: string): Promise<Game | null> {
   return existingGame && toGame(existingGame);
 }
 
+export async function getGameByTwitchId(
+  twitch_id: string
+): Promise<Game | null> {
+  const existingGame = await GameModel.findOne({ twitch_id });
+  return existingGame && toGame(existingGame);
+}
+
 export async function listGames(): Promise<Game[]> {
   const existingGames = await GameModel.find();
   return existingGames.map((existingGame) => toGame(existingGame));

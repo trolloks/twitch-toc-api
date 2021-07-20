@@ -8,6 +8,7 @@ import {
   middlewares,
   query,
   body,
+  path,
 } from "koa-swagger-decorator-trolloks";
 import authMiddleware from "../../server/auth-middleware";
 import { Role } from "../auth/auth-types";
@@ -37,6 +38,29 @@ export default class GameController {
     const games = await gameCore.listGames();
     ctx.response.status = 200;
     ctx.response.body = games;
+  }
+
+  @request("get", "/{twitch_id}")
+  @summary("Get specific game")
+  @tag
+  @path({
+    twitch_id: { type: "string", required: true },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Get specific game",
+      schema: {
+        type: "object",
+        properties: (Game as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async getClip(ctx: any) {
+    const clips = await gameCore.getGame(ctx.params.twitch_id);
+    ctx.response.status = 200;
+    ctx.response.body = clips;
   }
 
   // Create

@@ -36,7 +36,7 @@ export async function createChannel(channelDTO: ChannelDTO): Promise<void> {
     return;
   }
   console.log(channel);
-  if (channelDTO.game_id){
+  if (channelDTO.game_id) {
     channel.game_id = channelDTO.game_id;
   }
   await channelRepo.upsertChannel(channel);

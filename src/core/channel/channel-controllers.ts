@@ -43,6 +43,29 @@ export default class ChannelController {
     ctx.response.body = channels;
   }
 
+  @request("get", "/{twitch_id}")
+  @summary("Get specific channel")
+  @tag
+  @path({
+    twitch_id: { type: "string", required: true },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Get specific channel",
+      schema: {
+        type: "object",
+        properties: (Channel as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async getChannel(ctx: any) {
+    const clips = await channelCore.getChannelByTwitchId(ctx.params.twitch_id);
+    ctx.response.status = 200;
+    ctx.response.body = clips;
+  }
+
   // List
   @request("get", "/fetch")
   @summary("Fetch channel from twitch")

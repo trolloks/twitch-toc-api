@@ -13,7 +13,7 @@ function toChannel(channel: IChannel): Channel {
 
 export async function upsertChannel(channel: Channel): Promise<Channel | null> {
   const upsertChannel = await ChannelModel.findOneAndUpdate(
-    { twitch_id: channel.twitch_id },
+    { twitch_id: channel.twitch_id, game_id: channel.game_id },
     {
       ...channel,
     },

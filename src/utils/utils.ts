@@ -1,35 +1,52 @@
 // tried removing the es lint issues.
 // but these need to run sequentially for now. otherwise it gives problems.
 
+import fs from "fs";
+
 export async function asyncForEach(array: any[], callback: any) {
-   for (let index = 0; index < array.length; index += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      await callback(array[index], index, array);
-   }
+  for (let index = 0; index < array.length; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await callback(array[index], index, array);
+  }
 }
 
 export async function asyncMap(array: any[], callback: any) {
-   const items = [];
-   for (let index = 0; index < array.length; index += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      items.push(await callback(array[index], index, array));
-   }
-   return items;
+  const items = [];
+  for (let index = 0; index < array.length; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    items.push(await callback(array[index], index, array));
+  }
+  return items;
 }
 
 export function groupBy(xs: any[], key: any) {
-   return xs.reduce((rv: any, x: any) => {
-      // eslint-disable-next-line no-param-reassign
-      (rv[x[key]] = rv[x[key]] || []).push(x);
-      return rv;
-   }, {});
+  return xs.reduce((rv: any, x: any) => {
+    // eslint-disable-next-line no-param-reassign
+    (rv[x[key]] = rv[x[key]] || []).push(x);
+    return rv;
+  }, {});
 }
 
 export function streamToBuffer(stream: NodeJS.ReadableStream) {
-   return new Promise((resolve, reject) => {
-      const buffers: Buffer[] = [];
-      stream.on('error', reject);
-      stream.on('data', (data) => buffers.push(data));
-      stream.on('end', () => resolve(Buffer.concat(buffers)));
-   });
+  return new Promise((resolve, reject) => {
+    const buffers: Buffer[] = [];
+    stream.on("error", reject);
+    stream.on("data", (data) => buffers.push(data));
+    stream.on("end", () => resolve(Buffer.concat(buffers)));
+  });
+}
+
+export async function deleteFile(path: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    console.log("try delete!!!");
+    fs.unlink(path, (err) => {
+      console.log("result");
+      if (err) {
+        console.error(err);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
 }

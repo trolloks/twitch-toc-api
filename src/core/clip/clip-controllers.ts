@@ -8,6 +8,7 @@ import {
   middlewares,
   query,
   body,
+  path,
 } from "koa-swagger-decorator-trolloks";
 import authMiddleware from "../../server/auth-middleware";
 import { Role } from "../auth/auth-types";
@@ -24,9 +25,11 @@ export default class ClipController {
   @tag
   @query({
     //broadcast_id: { type: "string", required: false },
-    //game_id: { type: "string", required: false },
+    game_id: { type: "string", required: false },
     //take: { type: "numbre", required: false },
     download_status: { type: "string", required: false },
+    tag: { type: "string", required: false },
+    video_id: { type: "string", required: false },
   })
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
   @responses({
@@ -42,10 +45,35 @@ export default class ClipController {
   async listClips(ctx: any) {
     const clips = await clipCore.listClips(
       //ctx.query.broadcast_id,
-      //ctx.query.game_id,
+      ctx.query.game_id,
       //ctx.query.take
-      ctx.query.download_status
+      ctx.query.download_status,
+      ctx.query.tag,
+      ctx.query.video_id
     );
+    ctx.response.status = 200;
+    ctx.response.body = clips;
+  }
+
+  @request("get", "/{id}")
+  @summary("Get specific clip")
+  @tag
+  @path({
+    id: { type: "string", required: true },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Get specific clips",
+      schema: {
+        type: "object",
+        properties: (Clip as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async getClip(ctx: any) {
+    const clips = await clipCore.getClip(ctx.params.id);
     ctx.response.status = 200;
     ctx.response.body = clips;
   }
@@ -56,7 +84,9 @@ export default class ClipController {
   @query({
     fromState: { type: "string", required: true },
     toState: { type: "string", required: true },
-    clip_id: { type: "string", required: false },
+    twitch_id: { type: "string", required: false },
+    game_id: { type: "string", required: false },
+    tag: { type: "string", required: false },
   })
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
   @responses({
@@ -71,9 +101,11 @@ export default class ClipController {
   })
   async reject(ctx: any) {
     await clipCore.setState(
-      ctx.query.fromAtate,
+      ctx.query.fromState,
       ctx.query.toState,
-      ctx.query.clip_id
+      ctx.query.twitch_id,
+      ctx.query.game_id,
+      ctx.query.tag
     );
     ctx.response.status = 200;
   }
@@ -110,6 +142,9 @@ export default class ClipController {
 
   @request("post", "/trigger_download")
   @summary("Trigger downloads on all waiting clips")
+  @query({
+    game_id: { type: "string", required: false },
+  })
   @tag
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
   @responses({
@@ -123,7 +158,59 @@ export default class ClipController {
     400: { description: "error" },
   })
   async triggerDownload(ctx: any) {
-    const clips = await clipCore.triggerDownload();
+    const clips = await clipCore.triggerDownload(ctx.query.game_id);
+    ctx.response.status = 200;
+    ctx.response.body = clips;
+  }
+
+  @request("post", "/{id}/tag")
+  @summary("Add Tag to clip")
+  @path({
+    id: { type: "string", required: true },
+  })
+  @query({
+    tags: { type: "array", items: { type: "string" } },
+  })
+  @tag
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Add Tag to clip",
+      schema: {
+        type: "array",
+        properties: (Clip as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async addTagToClip(ctx: any) {
+    const clips = await clipCore.addTagToClip(
+      ctx.params.id,
+      ctx.query.tags ? ctx.query.tags.split(",") : []
+    );
+    ctx.response.status = 200;
+    ctx.response.body = clips;
+  }
+
+  @request("post", "/trigger_download/{id}")
+  @summary("Trigger downloads on specific clip")
+  @tag
+  @path({
+    id: { type: "string", required: true },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "All clips",
+      schema: {
+        type: "array",
+        properties: (Clip as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async triggerSpecificDownload(ctx: any) {
+    const clips = await clipCore.triggerSpecificDownload(ctx.params.id);
     ctx.response.status = 200;
     ctx.response.body = clips;
   }
@@ -131,6 +218,9 @@ export default class ClipController {
   @request("post", "/process")
   @summary("Process all downloaded clips")
   @tag
+  @query({
+    game_id: { type: "string", required: false },
+  })
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
   @responses({
     200: {
@@ -143,7 +233,7 @@ export default class ClipController {
     400: { description: "error" },
   })
   async processClips(ctx: any) {
-    const clips = await clipCore.processDownloads();
+    const clips = await clipCore.processDownloads(ctx.query.game_id);
     ctx.response.status = 200;
     ctx.response.body = clips;
   }
@@ -152,6 +242,9 @@ export default class ClipController {
   @request("delete", "")
   @summary("Deletes all clips")
   @tag
+  @query({
+    game_id: { type: "string", required: false },
+  })
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
   @responses({
     200: {
@@ -160,7 +253,7 @@ export default class ClipController {
     400: { description: "error" },
   })
   async removeAll(ctx: any) {
-    await clipCore.deleteAll();
+    await clipCore.deleteAll(ctx.query.game_id);
     ctx.response.status = 200;
   }
 }

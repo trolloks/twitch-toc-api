@@ -11,6 +11,9 @@ export async function listGames(): Promise<Game[]> {
   }
   return [];
 }
+export async function getGame(twitch_id: string): Promise<Game | null> {
+  return await gameRepo.getGameByTwitchId(twitch_id);
+}
 
 export async function createGame(gameDTO: GameDTO): Promise<void> {
   const game: Game = { ...gameDTO };

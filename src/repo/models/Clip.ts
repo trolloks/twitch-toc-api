@@ -12,6 +12,11 @@ export interface IClip extends Document {
   view_count: string;
   language: string;
   download_status: string;
+  download_path?: string;
+  scraped_url?: string;
+  duration?: number;
+  tags: string[];
+  video_id?: string;
 }
 
 const ClipSchema: SchemaDefinition = {
@@ -25,6 +30,11 @@ const ClipSchema: SchemaDefinition = {
   view_count: { type: String },
   language: { type: String },
   download_status: { type: String },
+  download_path: { default: undefined, type: String },
+  scraped_url: { default: undefined, type: String },
+  video_id: { default: undefined, type: String },
+  duration: { default: undefined, type: Number },
+  tags: [{ type: String }],
 };
 
 export default wrapper<IClip>("Clip", ClipSchema);

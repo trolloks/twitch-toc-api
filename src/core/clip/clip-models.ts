@@ -13,4 +13,9 @@ export class Clip {
   view_count: string;
   language: string;
   download_status: string;
+  download_path?: string;
+  scraped_url?: string;
+  duration?: number;
+  tags: string[];
+  video_id?: string;
 }
