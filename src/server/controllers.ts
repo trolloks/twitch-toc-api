@@ -5,6 +5,7 @@ import { gameController } from "../core/game/game-controllers";
 import { channelController } from "../core/channel/channel-controllers";
 import { clipController } from "../core/clip/clip-controllers";
 import { videoController } from "../core/video/video-controllers";
+import { settingsController } from "../core/settings/settings-controllers";
 
 export function configureControllers(router: SwaggerRouter) {
   userController(router);
@@ -13,4 +14,5 @@ export function configureControllers(router: SwaggerRouter) {
   channelController(router);
   clipController(router);
   videoController(router);
+  settingsController(router);
 }
