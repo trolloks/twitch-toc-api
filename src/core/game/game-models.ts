@@ -5,6 +5,7 @@ export class Game {
   id?: string;
   name: string;
   twitch_id?: string;
+  box_art_url?: string;
 }
 
 @swaggerClass()

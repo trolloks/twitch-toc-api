@@ -1,6 +1,6 @@
 import { Game, GameDTO } from "./game-models";
 import * as gameRepo from "../../repo/game";
-import { getGameId } from "../../gateway/twitch-gateway";
+import { getGameFromTwitch, getGames } from "../../gateway/twitch-gateway";
 
 const { NODE_SECRET } = process.env;
 
@@ -15,16 +15,26 @@ export async function getGame(twitch_id: string): Promise<Game | null> {
   return await gameRepo.getGameByTwitchId(twitch_id);
 }
 
+export async function fetchGames(search: string) {
+  return await getGames(search);
+}
+
 export async function createGame(gameDTO: GameDTO): Promise<void> {
   const game: Game = { ...gameDTO };
-  const id = await getGameId(game.name);
-  if (!id) {
+  const gameFromTwitch = await getGameFromTwitch(game.name);
+  if (!gameFromTwitch) {
     return;
   }
-  game.twitch_id = id;
-  await gameRepo.upsertGame(game);
+  await gameRepo.upsertGame({
+    ...gameFromTwitch,
+    twitch_id: gameFromTwitch.id,
+  });
 }
 
 export async function deleteAll(): Promise<void> {
   await gameRepo.removeAll();
+}
+
+export async function deleteOne(twitch_id: string): Promise<void> {
+  await gameRepo.removeOne(twitch_id);
 }

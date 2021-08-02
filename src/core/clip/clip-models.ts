@@ -18,4 +18,5 @@ export class Clip {
   duration?: number;
   tags: string[];
   video_id?: string;
+  video_order?: number;
 }

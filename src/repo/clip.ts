@@ -19,6 +19,7 @@ function toClip(clip: IClip): Clip {
     duration: clip.duration,
     tags: clip.tags,
     video_id: clip.video_id,
+    video_order: clip.video_order,
   };
   return actualClip;
 }

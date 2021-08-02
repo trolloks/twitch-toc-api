@@ -40,6 +40,30 @@ export default class GameController {
     ctx.response.body = games;
   }
 
+  // List
+  @request("get", "/fetch/twitch")
+  @summary("Fetch from twitch")
+  @tag
+  @query({
+    name: { type: "string", required: true },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Fetch from twitch",
+      schema: {
+        type: "array",
+        properties: (Game as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async fetchGames(ctx: any) {
+    const games = await gameCore.fetchGames(ctx.query.name);
+    ctx.response.status = 200;
+    ctx.response.body = games;
+  }
+
   @request("get", "/{twitch_id}")
   @summary("Get specific game")
   @tag
@@ -92,6 +116,25 @@ export default class GameController {
   })
   async listUsers(ctx: any) {
     await gameCore.deleteAll();
+    ctx.response.status = 200;
+  }
+
+  // Delete
+  @request("delete", "/{twitch_id}")
+  @path({
+    twitch_id: { type: "string", required: true },
+  })
+  @summary("Deletes specific games")
+  @tag
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Deleted specific games",
+    },
+    400: { description: "error" },
+  })
+  async deleteGame(ctx: any) {
+    await gameCore.deleteOne(ctx.params.twitch_id);
     ctx.response.status = 200;
   }
 }

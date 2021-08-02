@@ -67,7 +67,7 @@ export default class ChannelController {
   }
 
   // List
-  @request("get", "/fetch")
+  @request("get", "/fetch/stuff")
   @summary("Fetch channel from twitch")
   @tag
   @query({

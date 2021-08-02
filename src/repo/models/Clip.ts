@@ -17,6 +17,7 @@ export interface IClip extends Document {
   duration?: number;
   tags: string[];
   video_id?: string;
+  video_order?: number;
 }
 
 const ClipSchema: SchemaDefinition = {
@@ -33,6 +34,7 @@ const ClipSchema: SchemaDefinition = {
   download_path: { default: undefined, type: String },
   scraped_url: { default: undefined, type: String },
   video_id: { default: undefined, type: String },
+  video_order: { default: undefined, type: Number },
   duration: { default: undefined, type: Number },
   tags: [{ type: String }],
 };

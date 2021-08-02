@@ -40,18 +40,23 @@ async function setAuthentication() {
   }
 }
 
-export async function getGameId(name: string): Promise<string | undefined> {
+export async function getGameFromTwitch(name: string): Promise<any> {
   await setAuthentication();
   const response = await twitch_api.get(`games?name=${name}`);
   const { data } = response.data;
 
   if (data?.length) {
     const [twitchGame] = data;
-    if (twitchGame) {
-      return twitchGame.id;
-    }
+    return twitchGame;
   }
   return undefined;
+}
+
+export async function getGames(name: string): Promise<any> {
+  await setAuthentication();
+  const response = await twitch_api.get(`games?name=${name}`);
+  const { data } = response.data;
+  return data;
 }
 
 export async function getBroadcaster(
@@ -82,6 +87,7 @@ export async function getBroadcasters(
   console.log(`Trying to get channel with ${url}`);
   const response = await twitch_api.get(url);
   const { data } = response.data;
+  console.log(data);
   return data;
 }
 

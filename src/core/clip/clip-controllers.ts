@@ -163,6 +163,29 @@ export default class ClipController {
     ctx.response.body = clips;
   }
 
+  @request("post", "/{id}/rescrape")
+  @summary("Rescrape url from twitch")
+  @tag
+  @path({
+    id: { type: "string", required: true },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "All clips",
+      schema: {
+        type: "array",
+        properties: (Clip as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async rescrapeUrl(ctx: any) {
+    const clips = await clipCore.rescrapeUrl(ctx.params.id);
+    ctx.response.status = 200;
+    ctx.response.body = clips;
+  }
+
   @request("post", "/{id}/tag")
   @summary("Add Tag to clip")
   @path({

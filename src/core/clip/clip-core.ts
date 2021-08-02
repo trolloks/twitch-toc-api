@@ -47,7 +47,6 @@ export async function triggerSpecificDownload(id: string): Promise<void> {
 }
 
 export async function addTagToClip(id: string, tags: string[]): Promise<void> {
-  console.log(tags);
   const clip = await getClip(id);
   if (!clip) {
     return;
@@ -267,6 +266,14 @@ export async function setStateOfAll(twitch_id: string) {
   await clipRepo.upsertClip({ ...clip, download_status: "REJECTED" });
 }
 
+export async function rescrapeUrl(id: string) {
+  const clip = await getClip(id);
+  if (clip) {
+    const scraped_url = await scrapeDownloadUrl(clip.url);
+    await clipRepo.upsertClip({ ...clip, scraped_url });
+  }
+}
+
 export async function processDownloads(game_id?: string): Promise<void> {
   const clips = await listClips(game_id, "READY");
   const video = await videoCore.upsertVideo({
@@ -299,7 +306,7 @@ export async function processDownloads(game_id?: string): Promise<void> {
     await clipRepo.upsertClip(updatedClip);
   }
   console.log("finished downloading");
-  fisherYates(clips);
+  fisherYates(clips); // Randomize order
   const paths: string[] = [];
   const actualFileNames: string[] = [];
 
@@ -329,6 +336,13 @@ export async function processDownloads(game_id?: string): Promise<void> {
     paths.push(Path.resolve(outputPathDir, `${twitch_id}.mts`));
     actualFileNames.push(`${twitch_id}.mts`);
     console.log(`Processed ${twitch_id} successfully`);
+    const updatedClip = {
+      ...clips[i],
+      video_order: i + 1,
+      download_status: "PROCESSED",
+      video_id: video?.id,
+    };
+    await clipRepo.upsertClip(updatedClip);
   }
 
   if (OUTRO_PATH) {

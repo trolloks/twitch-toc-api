@@ -6,6 +6,7 @@ function toGame(game: IGame): Game {
     id: game._id,
     name: game.name,
     twitch_id: game.twitch_id,
+    box_art_url: game.box_art_url,
   };
   return actualUser;
 }
@@ -41,4 +42,8 @@ export async function listGames(): Promise<Game[]> {
 
 export async function removeAll(): Promise<void> {
   await GameModel.deleteMany({});
+}
+
+export async function removeOne(twitch_id: string): Promise<void> {
+  await GameModel.deleteOne({ twitch_id });
 }
