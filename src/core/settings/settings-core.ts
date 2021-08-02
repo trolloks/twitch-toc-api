@@ -14,3 +14,7 @@ export async function listSettings(user_id: string): Promise<Settings[]> {
   }
   return [];
 }
+
+export async function getSettings(id: string): Promise<Settings | null> {
+  return await settingsRepo.getSettingsById(id);
+}

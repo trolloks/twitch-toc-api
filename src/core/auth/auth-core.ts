@@ -15,9 +15,10 @@ export const ADMIN_USER = {
 };
 
 function generateToken(user: User): string {
-  const { email, roles } = user;
+  const { email, roles, id } = user;
   return jwt.sign(
     /* payload */ {
+      id,
       email,
       roles,
     },

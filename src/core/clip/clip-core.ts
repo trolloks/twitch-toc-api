@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { Channel } from "../channel/channel-models";
 import * as channelCore from "../channel/channel-core";
 import * as videoCore from "../video/video-core";
+import * as settingsCore from "../settings/settings-core";
 import {
   FONT_PATH,
   BANNER_PATH,
@@ -20,6 +21,7 @@ import {
 } from "../../env.json";
 import uuid from "uuid";
 import { deleteFile } from "../../utils/utils";
+import { Settings } from "../settings/settings-models";
 
 function sleep(time: number) {
   return new Promise((resolve) => {
@@ -274,8 +276,18 @@ export async function rescrapeUrl(id: string) {
   }
 }
 
-export async function processDownloads(game_id?: string): Promise<void> {
+export async function processDownloads(
+  settings_id?: string,
+  game_id?: string
+): Promise<void> {
+  if (!game_id) {
+    return;
+  }
   const clips = await listClips(game_id, "READY");
+  const settings =
+    (settings_id && (await settingsCore.getSettings(settings_id))) ||
+    new Settings();
+  const { banner_path, font_path, gif_path, intro_path, outro_path } = settings;
   const video = await videoCore.upsertVideo({
     game_id,
   });
@@ -315,19 +327,24 @@ export async function processDownloads(game_id?: string): Promise<void> {
     fs.mkdirSync(outputPathDir, 0x0744);
   }
 
-  if (INTRO_PATH) {
+  if (intro_path) {
     actualFileNames.push("intro.mts");
     const introPath = Path.resolve(outputPathDir, "intro.mts");
     if (!fs.existsSync(introPath)) {
-      fs.copyFileSync(INTRO_PATH, introPath);
+      fs.copyFileSync(intro_path, introPath);
     }
   }
 
   for (let i = 0; i < clips.length; i++) {
     const { twitch_id, broadcaster_name } = clips[i];
     const path = Path.resolve(FILE_DOWNLOAD_PATH, `${twitch_id}.mp4`);
+    const gifText = gif_path ? ` -ignore_loop 0 -i ${gif_path}` : "";
+    const bannerText =
+      banner_path && font_path
+        ? ` -i ${banner_path} -filter_complex [2][0]scale2ref=w='iw':h='ow*6/100'[wm][vid];[1][vid]scale2ref=w='iw*10/100':h='ow'[wm2][vid];[vid][wm2]overlay=W-w:10:shortest=1[vid2];[vid2][wm]overlay=0:H-h,drawtext=text='${broadcaster_name}':x=18:y=H-th-18:fontfile='${font_path}':fontsize=64:fontcolor=white`
+        : "";
     await ffmpegUtil(
-      `-y -i ${path} -ignore_loop 0 -i ${GIF_LOGO_PATH} -i ${BANNER_PATH} -filter_complex [2][0]scale2ref=w='iw':h='ow*6/100'[wm][vid];[1][vid]scale2ref=w='iw*10/100':h='ow'[wm2][vid];[vid][wm2]overlay=W-w:10:shortest=1[vid2];[vid2][wm]overlay=0:H-h,drawtext=text='${broadcaster_name}':x=18:y=H-th-18:fontfile='${FONT_PATH}':fontsize=64:fontcolor=white -acodec mp3 -q 0 ${Path.resolve(
+      `-y -i ${path}${gifText}${bannerText} -acodec mp3 -q 0 ${Path.resolve(
         outputPathDir,
         `${twitch_id}.mts`
       )}`
@@ -345,11 +362,11 @@ export async function processDownloads(game_id?: string): Promise<void> {
     await clipRepo.upsertClip(updatedClip);
   }
 
-  if (OUTRO_PATH) {
+  if (outro_path) {
     actualFileNames.push("outro.mts");
     const introPath = Path.resolve(outputPathDir, "outro.mts");
     if (!fs.existsSync(introPath)) {
-      fs.copyFileSync(OUTRO_PATH, introPath);
+      fs.copyFileSync(outro_path, introPath);
     }
   }
 

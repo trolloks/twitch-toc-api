@@ -39,3 +39,8 @@ export async function getSettingsByUserId(
   const existingSettings = await SettingsModel.find({ user_id });
   return existingSettings.map((existingSetting) => toSettings(existingSetting));
 }
+
+export async function getSettingsById(id: string): Promise<Settings | null> {
+  const existingSetting = await SettingsModel.findById(id);
+  return existingSetting ? toSettings(existingSetting) : null;
+}

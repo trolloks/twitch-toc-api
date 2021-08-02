@@ -66,6 +66,29 @@ export default class VideoController {
     ctx.response.body = clips;
   }
 
+  @request("delete", "/{id}")
+  @summary("delete specific video")
+  @tag
+  @path({
+    id: { type: "string", required: true },
+  })
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "delete specific video",
+      schema: {
+        type: "object",
+        properties: (Video as any).swaggerDocument,
+      },
+    },
+    400: { description: "error" },
+  })
+  async deleteClip(ctx: any) {
+    const clips = await videoCore.deleteVideo(ctx.params.id);
+    ctx.response.status = 200;
+    ctx.response.body = clips;
+  }
+
   // Delete
   @request("delete", "")
   @summary("Deletes all clips")

@@ -43,3 +43,7 @@ export async function listVideos(game_id?: string): Promise<Video[]> {
 export async function removeAll(): Promise<void> {
   await VideoModel.deleteMany({});
 }
+
+export async function removeVideo(id: string): Promise<void> {
+  await VideoModel.findByIdAndDelete(id);
+}

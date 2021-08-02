@@ -40,9 +40,9 @@ async function setAuthentication() {
   }
 }
 
-export async function getGameFromTwitch(name: string): Promise<any> {
+export async function getGameFromTwitch(twitch_id: string): Promise<any> {
   await setAuthentication();
-  const response = await twitch_api.get(`games?name=${name}`);
+  const response = await twitch_api.get(`games?id=${twitch_id}`);
   const { data } = response.data;
 
   if (data?.length) {

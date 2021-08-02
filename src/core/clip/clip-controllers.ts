@@ -242,6 +242,7 @@ export default class ClipController {
   @summary("Process all downloaded clips")
   @tag
   @query({
+    settings_id: { type: "string", required: true },
     game_id: { type: "string", required: false },
   })
   @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
@@ -256,7 +257,10 @@ export default class ClipController {
     400: { description: "error" },
   })
   async processClips(ctx: any) {
-    const clips = await clipCore.processDownloads(ctx.query.game_id);
+    const clips = await clipCore.processDownloads(
+      ctx.query.settings_id,
+      ctx.query.game_id
+    );
     ctx.response.status = 200;
     ctx.response.body = clips;
   }

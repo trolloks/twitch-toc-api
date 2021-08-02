@@ -20,14 +20,14 @@ export async function fetchGames(search: string) {
 }
 
 export async function createGame(gameDTO: GameDTO): Promise<void> {
-  const game: Game = { ...gameDTO };
-  const gameFromTwitch = await getGameFromTwitch(game.name);
+  const { twitch_id } = gameDTO;
+  const gameFromTwitch = await getGameFromTwitch(twitch_id);
   if (!gameFromTwitch) {
     return;
   }
   await gameRepo.upsertGame({
     ...gameFromTwitch,
-    twitch_id: gameFromTwitch.id,
+    twitch_id,
   });
 }
 
