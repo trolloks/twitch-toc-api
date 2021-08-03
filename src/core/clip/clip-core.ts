@@ -511,11 +511,11 @@ const uploadPart = (
       }
       return;
     }
-    multipartMap.Parts[(this as any).request.params.PartNumber - 1] = {
+    multipartMap.Parts[partParams.PartNumber - 1] = {
       ETag: mData.ETag,
-      PartNumber: Number((this as any).request.params.PartNumber),
+      PartNumber: Number(partParams.PartNumber),
     };
-    console.log("Completed part", (this as any).request.params.PartNumber);
+    console.log("Completed part", partParams.PartNumber);
     console.log("mData", mData);
     if (--numPartsLeft > 0) return; // complete only when all parts uploaded
 
