@@ -2,8 +2,9 @@ import axios from "axios";
 import { format } from "date-fns";
 import cheerio from "cheerio";
 import puppeteer from "puppeteer";
-import { TWITCH_CLIENT, TWITCH_SECRET } from "../env.json";
 import { Channel } from "src/core/channel/channel-models";
+
+const { TWITCH_CLIENT, TWITCH_SECRET } = process.env;
 
 function sleep(time: number) {
   return new Promise((resolve) => {

@@ -11,17 +11,11 @@ import { Channel } from "../channel/channel-models";
 import * as channelCore from "../channel/channel-core";
 import * as videoCore from "../video/video-core";
 import * as settingsCore from "../settings/settings-core";
-import {
-  FONT_PATH,
-  BANNER_PATH,
-  GIF_LOGO_PATH,
-  INTRO_PATH,
-  OUTRO_PATH,
-  FILE_DOWNLOAD_PATH,
-} from "../../env.json";
 import uuid from "uuid";
 import { deleteFile } from "../../utils/utils";
 import { Settings } from "../settings/settings-models";
+
+const { FILE_DOWNLOAD_PATH } = process.env;
 
 function sleep(time: number) {
   return new Promise((resolve) => {
@@ -59,7 +53,7 @@ export async function addTagToClip(id: string, tags: string[]): Promise<void> {
 
 async function triggerSpecificDownloadOnClip(clip: Clip): Promise<void> {
   const { twitch_id, scraped_url } = clip;
-  const path = Path.resolve(FILE_DOWNLOAD_PATH, `${twitch_id}.mp4`);
+  const path = Path.resolve(FILE_DOWNLOAD_PATH || "", `${twitch_id}.mp4`);
   if (fs.existsSync(path)) {
     console.log(`${path} already exists`);
     const updatedClip = {
@@ -73,8 +67,8 @@ async function triggerSpecificDownloadOnClip(clip: Clip): Promise<void> {
   console.log("Checked if file already exists");
 
   if (scraped_url) {
-    if (!fs.existsSync(FILE_DOWNLOAD_PATH)) {
-      fs.mkdirSync(FILE_DOWNLOAD_PATH, 0x0744);
+    if (!fs.existsSync(FILE_DOWNLOAD_PATH || "")) {
+      fs.mkdirSync(FILE_DOWNLOAD_PATH || "", 0x0744);
     }
 
     const writer = fs.createWriteStream(path);
@@ -297,7 +291,7 @@ export async function processDownloads(
     } catch (err) {
       try {
         const path = Path.resolve(
-          FILE_DOWNLOAD_PATH,
+          FILE_DOWNLOAD_PATH || "",
           `${clips[i].twitch_id}.mp4`
         );
         fs.unlinkSync(path);
@@ -322,7 +316,7 @@ export async function processDownloads(
   const paths: string[] = [];
   const actualFileNames: string[] = [];
 
-  const outputPathDir = Path.resolve(FILE_DOWNLOAD_PATH, "processed");
+  const outputPathDir = Path.resolve(FILE_DOWNLOAD_PATH || "", "processed");
   if (!fs.existsSync(outputPathDir)) {
     fs.mkdirSync(outputPathDir, 0x0744);
   }
@@ -343,7 +337,7 @@ export async function processDownloads(
 
   for (let i = 0; i < clips.length; i++) {
     const { twitch_id, broadcaster_name } = clips[i];
-    const path = Path.resolve(FILE_DOWNLOAD_PATH, `${twitch_id}.mp4`);
+    const path = Path.resolve(FILE_DOWNLOAD_PATH || "", `${twitch_id}.mp4`);
     const gifText = gif_path ? ` -ignore_loop 0 -i ${gif_path}` : "";
     let tempFont = font_path;
     if (
@@ -356,7 +350,10 @@ export async function processDownloads(
         responseType: "stream",
       });
 
-      const path = Path.resolve(FILE_DOWNLOAD_PATH, `processed/onlineFont.ttf`);
+      const path = Path.resolve(
+        FILE_DOWNLOAD_PATH || "",
+        `processed/onlineFont.ttf`
+      );
       const writer = fs.createWriteStream(path);
       response.data.pipe(writer);
       tempFont = path.replace(/\\/g, "/").replace(/\:\//g, "\\\\:/");
@@ -438,7 +435,7 @@ export async function processDownloads(
     console.log(`Deleting source vids...`);
     for (let i = 0; i < clips.length; i++) {
       const path = Path.resolve(
-        FILE_DOWNLOAD_PATH,
+        FILE_DOWNLOAD_PATH || "",
         `${clips[i].twitch_id}.mp4`
       );
       console.log(`Deleting ${path}...`);
