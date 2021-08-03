@@ -316,7 +316,7 @@ export async function processDownloads(
   const paths: string[] = [];
   const actualFileNames: string[] = [];
 
-  const outputPathDir = Path.resolve(FILE_DOWNLOAD_PATH || "", "processed");
+  const outputPathDir = Path.resolve(FILE_DOWNLOAD_PATH || "");
   if (!fs.existsSync(outputPathDir)) {
     fs.mkdirSync(outputPathDir, 0x0744);
   }
@@ -350,10 +350,7 @@ export async function processDownloads(
         responseType: "stream",
       });
 
-      const path = Path.resolve(
-        FILE_DOWNLOAD_PATH || "",
-        `processed/onlineFont.ttf`
-      );
+      const path = Path.resolve(FILE_DOWNLOAD_PATH || "", `onlineFont.ttf`);
       const writer = fs.createWriteStream(path);
       response.data.pipe(writer);
       tempFont = path.replace(/\\/g, "/").replace(/\:\//g, "\\\\:/");
