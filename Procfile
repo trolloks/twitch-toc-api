@@ -1,1 +1,1 @@
-web: yarn prod
+web: node lib/index.js

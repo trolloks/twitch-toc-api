@@ -11,8 +11,7 @@
     "install:ci": "npm ci",
     "lint": "eslint '{src,tests}/**/*.ts'",
     "start": "node lib/index.js",
-    "start:watch": "nodemon lib/index.js --log",
-    "prod": "concurrently \"npm run build\" \"npm run start\""
+    "start:watch": "nodemon lib/index.js --log"
   },
   "author": "Ethan Arrowood",
   "license": "MIT",
