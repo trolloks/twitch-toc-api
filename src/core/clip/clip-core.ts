@@ -2,6 +2,7 @@ import fs from "fs";
 import axios from "axios";
 import Path from "path";
 import { spawn } from "child_process";
+import { S3 } from "aws-sdk";
 import { getVideoDurationInSeconds } from "get-video-duration";
 import { getClips, scrapeDownloadUrl } from "../../gateway/twitch-gateway";
 import { Clip } from "./clip-models";
@@ -14,6 +15,7 @@ import * as settingsCore from "../settings/settings-core";
 import uuid from "uuid";
 import { deleteFile } from "../../utils/utils";
 import { Settings } from "../settings/settings-models";
+import { Part } from "aws-sdk/clients/s3";
 
 const { FILE_DOWNLOAD_PATH } = process.env;
 
@@ -316,7 +318,7 @@ export async function processDownloads(
   const paths: string[] = [];
   const actualFileNames: string[] = [];
 
-  const outputPathDir = Path.resolve(FILE_DOWNLOAD_PATH || "");
+  const outputPathDir = Path.resolve(FILE_DOWNLOAD_PATH || "", "processed");
   if (!fs.existsSync(outputPathDir)) {
     fs.mkdirSync(outputPathDir, 0x0744);
   }
@@ -350,7 +352,10 @@ export async function processDownloads(
         responseType: "stream",
       });
 
-      const path = Path.resolve(FILE_DOWNLOAD_PATH || "", `onlineFont.ttf`);
+      const path = Path.resolve(
+        FILE_DOWNLOAD_PATH || "",
+        `processed/onlineFont.ttf`
+      );
       const writer = fs.createWriteStream(path);
       response.data.pipe(writer);
       tempFont = path.replace(/\\/g, "/").replace(/\:\//g, "\\\\:/");
@@ -438,25 +443,145 @@ export async function processDownloads(
       console.log(`Deleting ${path}...`);
       fs.unlinkSync(path);
     }
+
+    const s3 = new S3({
+      region: "eu-west-1",
+      accessKeyId: process.env.AWS_ACCESS_KEY,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    });
+
+    var buffer = fs.readFileSync(finalFilePath);
+    const fileKey = `${format(new Date(), "yyyyMMddhhmmss")}.mp4`;
+    multipartUpload(s3, fileKey, buffer);
+
     await videoCore.upsertVideo({
       ...video,
-      download_path: finalFilePath,
+      download_path: `https://twitchtoc-bucket.s3.eu-west-1.amazonaws.com/${fileKey}`,
       duration: await getVideoDurationInSeconds(finalFilePath),
     });
   }
+}
+
+const bucket = "twitchtoc-bucket"; // TODO: move out
+const maxUploadTries = 3;
+const multipartMap = {
+  Parts: [] as Part[],
+};
+
+function completeMultipartUpload(s3: S3, doneParams: any, startTime: Date) {
+  s3.completeMultipartUpload(doneParams, function (err, data) {
+    if (err) {
+      console.log("An error occurred while completing the multipart upload");
+      console.log(err);
+    } else {
+      var delta =
+        (new Date().getMilliseconds() - startTime.getMilliseconds()) / 1000;
+      console.log("Completed upload in", delta, "seconds");
+      console.log("Final upload data:", data);
+    }
+  });
+}
+
+const uploadPart = (
+  s3: S3,
+  multipart: S3.CreateMultipartUploadOutput,
+  partParams: any,
+  fileKey: string,
+  numPartsLeft: number,
+  startTime: Date,
+  tryNumParam?: number
+) => {
+  var tryNum = tryNumParam || 1;
+  s3.uploadPart(partParams, (multiErr, mData) => {
+    if (multiErr) {
+      console.log("multiErr, upload part error:", multiErr);
+      if (tryNum < maxUploadTries) {
+        console.log("Retrying upload of part: #", partParams.PartNumber);
+        uploadPart(
+          s3,
+          multipart,
+          partParams,
+          fileKey,
+          numPartsLeft,
+          startTime,
+          tryNum + 1
+        );
+      } else {
+        console.log("Failed uploading part: #", partParams.PartNumber);
+      }
+      return;
+    }
+    multipartMap.Parts[(this as any).request.params.PartNumber - 1] = {
+      ETag: mData.ETag,
+      PartNumber: Number((this as any).request.params.PartNumber),
+    };
+    console.log("Completed part", (this as any).request.params.PartNumber);
+    console.log("mData", mData);
+    if (--numPartsLeft > 0) return; // complete only when all parts uploaded
+
+    var doneParams = {
+      Bucket: bucket,
+      Key: fileKey,
+      MultipartUpload: multipartMap,
+      UploadId: multipart.UploadId,
+    };
+
+    console.log("Completing upload...");
+    completeMultipartUpload(s3, doneParams, startTime);
+  });
+};
+
+function multipartUpload(s3: S3, fileKey: string, buffer: Buffer) {
+  var startTime = new Date();
+  const partSize = 1024 * 1024 * 5; // Minimum 5MB per chunk (except the last part) http://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
+  let partNum = 0;
+  var numPartsLeft = Math.ceil(buffer.length / partSize);
+
+  const params = {
+    Bucket: bucket,
+    Key: `${format(new Date(), "yyyyMMddhhmmss")}`,
+  };
+  // Multipart
+  console.log("Creating multipart upload for:", fileKey);
+  s3.createMultipartUpload(params, function (mpErr, multipart) {
+    if (mpErr) {
+      console.log("Error!", mpErr);
+      return;
+    }
+    console.log("Got upload ID", multipart.UploadId);
+
+    // Grab each partSize chunk and upload it as a part
+    for (
+      var rangeStart = 0;
+      rangeStart < buffer.length;
+      rangeStart += partSize
+    ) {
+      partNum++;
+      var end = Math.min(rangeStart + partSize, buffer.length),
+        partParams = {
+          Body: buffer.slice(rangeStart, end),
+          Bucket: bucket,
+          Key: fileKey,
+          PartNumber: String(partNum),
+          UploadId: multipart.UploadId,
+        };
+
+      // Send a single part
+      console.log(
+        "Uploading part: #",
+        partParams.PartNumber,
+        ", Range start:",
+        rangeStart
+      );
+      uploadPart(s3, multipart, partParams, fileKey, numPartsLeft, startTime);
+    }
+  });
 }
 
 function ffmpegUtil(params: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const ffmpeg = spawn("ffmpeg", params.split(" "), {
       cwd: Path.resolve("./"),
-    });
-    ffmpeg.stdout.on("data", (data) => {
-      console.log(`stdout: ${data}`);
-    });
-
-    ffmpeg.stderr.on("data", (data) => {
-      console.log(`stderr: ${data}`);
     });
 
     ffmpeg.on("error", (error) => {
