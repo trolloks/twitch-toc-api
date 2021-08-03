@@ -33,8 +33,12 @@ export async function deleteVideo(id: string): Promise<void> {
   }
   const video = await getVideo(id);
   if (video && video.download_path) {
-    fs.unlinkSync(video?.download_path);
-    console.log(`Deleted ${video?.download_path}`);
+    try {
+      fs.unlinkSync(video?.download_path);
+      console.log(`Deleted ${video?.download_path}`);
+    } catch (err) {
+      console.error(err);
+    }
   }
   return await videoRepo.removeVideo(id);
 }
