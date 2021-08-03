@@ -329,26 +329,49 @@ export async function processDownloads(
 
   if (intro_path) {
     actualFileNames.push("intro.mts");
+    const response = await axios({
+      url: intro_path,
+      method: "GET",
+      responseType: "stream",
+    });
+
     const introPath = Path.resolve(outputPathDir, "intro.mts");
-    if (!fs.existsSync(introPath)) {
-      fs.copyFileSync(intro_path, introPath);
-    }
+    const writer = fs.createWriteStream(introPath);
+    response.data.pipe(writer);
+    console.log(`Successfully read the intro url, downloading to ${introPath}`);
   }
 
   for (let i = 0; i < clips.length; i++) {
     const { twitch_id, broadcaster_name } = clips[i];
     const path = Path.resolve(FILE_DOWNLOAD_PATH, `${twitch_id}.mp4`);
     const gifText = gif_path ? ` -ignore_loop 0 -i ${gif_path}` : "";
+    let tempFont = font_path;
+    if (
+      font_path &&
+      (font_path.startsWith("https://") || font_path.startsWith("http://"))
+    ) {
+      const response = await axios({
+        url: font_path,
+        method: "GET",
+        responseType: "stream",
+      });
+
+      const path = Path.resolve(FILE_DOWNLOAD_PATH, `processed/onlineFont.ttf`);
+      const writer = fs.createWriteStream(path);
+      response.data.pipe(writer);
+      tempFont = path.replace(/\\/g, "/").replace(/\:\//g, "\\\\:/");
+      console.log(`Successfully read the font url, downloading to ${tempFont}`);
+    }
     const bannerText =
-      banner_path && font_path
-        ? ` -i ${banner_path} -filter_complex [2][0]scale2ref=w='iw':h='ow*6/100'[wm][vid];[1][vid]scale2ref=w='iw*10/100':h='ow'[wm2][vid];[vid][wm2]overlay=W-w:10:shortest=1[vid2];[vid2][wm]overlay=0:H-h,drawtext=text='${broadcaster_name}':x=18:y=H-th-18:fontfile='${font_path}':fontsize=64:fontcolor=white`
+      banner_path && tempFont
+        ? ` -i ${banner_path} -filter_complex [2][0]scale2ref=w='iw':h='ow*6/100'[wm][vid];[1][vid]scale2ref=w='iw*10/100':h='ow'[wm2][vid];[vid][wm2]overlay=W-w:10:shortest=1[vid2];[vid2][wm]overlay=0:H-h,drawtext=text='${broadcaster_name}':x=18:y=H-th-18:fontfile='${tempFont}':fontsize=64:fontcolor=white`
         : "";
-    await ffmpegUtil(
-      `-y -i ${path}${gifText}${bannerText} -acodec mp3 -q 0 ${Path.resolve(
-        outputPathDir,
-        `${twitch_id}.mts`
-      )}`
-    );
+    const ffmpegCommand = `-y -i ${path}${gifText}${bannerText} -acodec mp3 -q 0 ${Path.resolve(
+      outputPathDir,
+      `${twitch_id}.mts`
+    )}`;
+    console.log(`ffmpeg command=(${ffmpegCommand})`);
+    await ffmpegUtil(ffmpegCommand);
 
     paths.push(Path.resolve(outputPathDir, `${twitch_id}.mts`));
     actualFileNames.push(`${twitch_id}.mts`);
@@ -364,10 +387,16 @@ export async function processDownloads(
 
   if (outro_path) {
     actualFileNames.push("outro.mts");
-    const introPath = Path.resolve(outputPathDir, "outro.mts");
-    if (!fs.existsSync(introPath)) {
-      fs.copyFileSync(outro_path, introPath);
-    }
+    const response = await axios({
+      url: outro_path,
+      method: "GET",
+      responseType: "stream",
+    });
+
+    const outroPath = Path.resolve(outputPathDir, "outro.mts");
+    const writer = fs.createWriteStream(outroPath);
+    response.data.pipe(writer);
+    console.log(`Successfully read the outro url, downloading to ${outroPath}`);
   }
 
   if (paths.length > 0 && actualFileNames.length > 0) {

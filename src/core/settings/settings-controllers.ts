@@ -58,6 +58,25 @@ export default class SettingsController {
     await settingsCore.upsertSettings(ctx.request.body as Settings);
     ctx.response.status = 200;
   }
+
+  // Delete
+  @request("delete", "/{id}")
+  @path({
+    id: { type: "string", required: true },
+  })
+  @summary("Deletes specific settings")
+  @tag
+  @middlewares([authMiddleware({ minRoles: [Role.SUPERUSER] })])
+  @responses({
+    200: {
+      description: "Deleted specific settings",
+    },
+    400: { description: "error" },
+  })
+  async deleteGame(ctx: any) {
+    await settingsCore.deleteOne(ctx.params.id);
+    ctx.response.status = 200;
+  }
 }
 
 export function settingsController(router: SwaggerRouter) {

@@ -4,6 +4,7 @@ import SettingsModel, { ISettings } from "./models/Settings";
 function toSettings(settings: ISettings): Settings {
   return {
     id: settings._id,
+    name: settings.name,
     user_id: settings.user_id,
     banner_path: settings.banner_path,
     font_path: settings.font_path,
@@ -42,5 +43,10 @@ export async function getSettingsByUserId(
 
 export async function getSettingsById(id: string): Promise<Settings | null> {
   const existingSetting = await SettingsModel.findById(id);
+  return existingSetting ? toSettings(existingSetting) : null;
+}
+
+export async function deleteSettingsById(id: string): Promise<Settings | null> {
+  const existingSetting = await SettingsModel.findByIdAndDelete(id);
   return existingSetting ? toSettings(existingSetting) : null;
 }

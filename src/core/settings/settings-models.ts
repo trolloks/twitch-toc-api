@@ -3,6 +3,7 @@ import { swaggerClass } from "koa-swagger-decorator-trolloks";
 @swaggerClass()
 export class Settings {
   id?: string;
+  name?: string;
   user_id: string;
   font_path?: string;
   banner_path?: string;

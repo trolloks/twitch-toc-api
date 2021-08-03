@@ -3,6 +3,7 @@ import { wrapper, Document } from "../utils/mongoose-helpers";
 
 export interface ISettings extends Document {
   id: string;
+  name?: string;
   user_id: string;
   font_path?: string;
   banner_path?: string;
@@ -13,6 +14,7 @@ export interface ISettings extends Document {
 
 const SettingsSchema: SchemaDefinition = {
   id: { type: String },
+  name: { default: undefined, type: String },
   user_id: { type: String },
   font_path: { default: undefined, type: String },
   banner_path: { default: undefined, type: String },

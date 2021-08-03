@@ -18,3 +18,7 @@ export async function listSettings(user_id: string): Promise<Settings[]> {
 export async function getSettings(id: string): Promise<Settings | null> {
   return await settingsRepo.getSettingsById(id);
 }
+
+export async function deleteOne(id: string): Promise<void> {
+  await settingsRepo.deleteSettingsById(id);
+}
