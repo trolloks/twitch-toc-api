@@ -17,7 +17,12 @@ import { deleteFile } from "../../utils/utils";
 import { Settings } from "../settings/settings-models";
 import { Part } from "aws-sdk/clients/s3";
 
-const { FILE_DOWNLOAD_PATH } = process.env;
+const {
+  FILE_DOWNLOAD_PATH,
+  AWS_ACCESS_KEY,
+  AWS_SECRET_ACCESS_KEY,
+  AWS_BUCKET,
+} = process.env;
 
 function sleep(time: number) {
   return new Promise((resolve) => {
@@ -443,136 +448,90 @@ export async function processDownloads(
 
     const s3 = new S3({
       region: "eu-west-1",
-      accessKeyId: process.env.AWS_ACCESS_KEY,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      accessKeyId: AWS_ACCESS_KEY,
+      secretAccessKey: AWS_SECRET_ACCESS_KEY,
     });
 
     var buffer = fs.readFileSync(finalFilePath);
     const fileKey = `${format(new Date(), "yyyyMMddhhmmss")}.mp4`;
-    multipartUpload(s3, fileKey, buffer);
+    const finalResult = await multipartUpload(s3, fileKey, buffer);
 
     await videoCore.upsertVideo({
       ...video,
-      download_path: `https://twitchtoc-bucket.s3.eu-west-1.amazonaws.com/${fileKey}`,
+      download_path: finalResult?.Location,
       duration: await getVideoDurationInSeconds(finalFilePath),
     });
+
+    try {
+      fs.unlinkSync(finalFilePath);
+      console.log(`Deleted ${finalFilePath}`);
+    } catch (err) {
+      console.error(err);
+    }
   }
 }
 
-const bucket = "twitchtoc-bucket"; // TODO: move out
-const maxUploadTries = 3;
-const multipartMap = {
-  Parts: [] as Part[],
-};
-
-function completeMultipartUpload(s3: S3, doneParams: any, startTime: Date) {
-  s3.completeMultipartUpload(doneParams, function (err, data) {
-    if (err) {
-      console.log("An error occurred while completing the multipart upload");
-      console.log(err);
-    } else {
-      var delta =
-        (new Date().getMilliseconds() - startTime.getMilliseconds()) / 1000;
-      console.log("Completed upload in", delta, "seconds");
-      console.log("Final upload data:", data);
-    }
-  });
-}
-
-const uploadPart = (
-  s3: S3,
-  multipart: S3.CreateMultipartUploadOutput,
-  partParams: any,
-  fileKey: string,
-  numPartsLeft: number,
-  startTime: Date,
-  tryNumParam?: number
-) => {
-  var tryNum = tryNumParam || 1;
-  s3.uploadPart(partParams, (multiErr, mData) => {
-    if (multiErr) {
-      console.log("multiErr, upload part error:", multiErr);
-      if (tryNum < maxUploadTries) {
-        console.log("Retrying upload of part: #", partParams.PartNumber);
-        uploadPart(
-          s3,
-          multipart,
-          partParams,
-          fileKey,
-          numPartsLeft,
-          startTime,
-          tryNum + 1
-        );
-      } else {
-        console.log("Failed uploading part: #", partParams.PartNumber);
-      }
-      return;
-    }
-    multipartMap.Parts[partParams.PartNumber - 1] = {
-      ETag: mData.ETag,
-      PartNumber: Number(partParams.PartNumber),
-    };
-    console.log("Completed part", partParams.PartNumber);
-    console.log("mData", mData);
-    if (--numPartsLeft > 0) return; // complete only when all parts uploaded
-
-    var doneParams = {
-      Bucket: bucket,
-      Key: fileKey,
-      MultipartUpload: multipartMap,
-      UploadId: multipart.UploadId,
-    };
-
-    console.log("Completing upload...");
-    completeMultipartUpload(s3, doneParams, startTime);
-  });
-};
-
-function multipartUpload(s3: S3, fileKey: string, buffer: Buffer) {
-  var startTime = new Date();
-  const partSize = 1024 * 1024 * 5; // Minimum 5MB per chunk (except the last part) http://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
-  let partNum = 0;
-  var numPartsLeft = Math.ceil(buffer.length / partSize);
-
+async function multipartUpload(s3: S3, fileKey: string, buffer: Buffer) {
+  const chunkSize = 5242881; // bytes
   const params = {
-    Bucket: bucket,
-    Key: `${format(new Date(), "yyyyMMddhhmmss")}`,
+    Bucket: AWS_BUCKET || "",
+    Key: fileKey,
+    ACL: "public-read",
   };
   // Multipart
   console.log("Creating multipart upload for:", fileKey);
-  s3.createMultipartUpload(params, function (mpErr, multipart) {
-    if (mpErr) {
-      console.log("Error!", mpErr);
-      return;
-    }
-    console.log("Got upload ID", multipart.UploadId);
-
-    // Grab each partSize chunk and upload it as a part
-    for (
-      var rangeStart = 0;
-      rangeStart < buffer.length;
-      rangeStart += partSize
-    ) {
-      partNum++;
-      var end = Math.min(rangeStart + partSize, buffer.length),
-        partParams = {
-          Body: buffer.slice(rangeStart, end),
-          Bucket: bucket,
-          Key: fileKey,
-          PartNumber: String(partNum),
-          UploadId: multipart.UploadId,
-        };
-
-      // Send a single part
-      console.log(
-        "Uploading part: #",
-        partParams.PartNumber,
-        ", Range start:",
-        rangeStart
-      );
-      uploadPart(s3, multipart, partParams, fileKey, numPartsLeft, startTime);
-    }
+  const result = await s3.createMultipartUpload(params).promise();
+  const { Bucket, Key, UploadId } = result;
+  if (!Bucket || !Key || !UploadId) {
+    return;
+  }
+  console.log(result);
+  console.log("chunking...");
+  let chunkArr = [];
+  for (
+    var rangeStart = 0;
+    rangeStart < buffer.length;
+    rangeStart += chunkSize
+  ) {
+    const end = Math.min(rangeStart + chunkSize, buffer.length);
+    chunkArr.push(buffer.slice(rangeStart, end));
+  }
+  console.log("finished chunks...");
+  const chunkyPromises = [];
+  for (let i = 0; i < chunkArr.length; i += 1) {
+    const chunkParams = {
+      Body: chunkArr[i],
+      Bucket,
+      Key,
+      PartNumber: i + 1,
+      UploadId,
+      ContentLength: chunkArr[i].length,
+    };
+    console.log(chunkParams);
+    chunkyPromises.push(s3.uploadPart(chunkParams).promise());
+  }
+  const lastUpload = await Promise.all(chunkyPromises);
+  const multipartMap = lastUpload.map((lastUploadItem, index) => {
+    const multipart = {
+      ETag: lastUploadItem.ETag,
+      PartNumber: Number(index + 1),
+    };
+    console.log(multipart);
+    return multipart;
   });
+
+  var doneParams = {
+    Bucket,
+    Key,
+    MultipartUpload: { Parts: multipartMap },
+    UploadId,
+  };
+
+  console.log(doneParams);
+  console.log("Completing upload...");
+  const finalResult = await s3.completeMultipartUpload(doneParams).promise();
+  console.log("Final upload data:", finalResult);
+  return finalResult;
 }
 
 function ffmpegUtil(params: string): Promise<void> {
