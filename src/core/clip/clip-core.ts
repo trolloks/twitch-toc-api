@@ -545,6 +545,14 @@ function ffmpegUtil(params: string): Promise<void> {
       reject();
     });
 
+    ffmpeg.stdout.on("data", (data) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    ffmpeg.stderr.on("data", (data) => {
+      console.log(`stderr: ${data}`);
+    });
+
     ffmpeg.on("close", (code) => {
       console.log(`child process exited with code ${code}`);
       resolve();
